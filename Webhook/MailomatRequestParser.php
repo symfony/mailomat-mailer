@@ -83,8 +83,8 @@ final class MailomatRequestParser extends AbstractRequestParser
         // see https://api.mailomat.swiss/docs/#tag/webhook-security
         $data = implode('.', [$headers->get(self::HEADER_ID), $headers->get(self::HEADER_EVENT), $headers->get(self::HEADER_TIMESTAMP)]);
 
-        [$algo, $signature] = explode('=', $headers->get(self::HEADER_SIGNATURE));
-        if (!hash_equals(hash_hmac($algo, $data, $secret), $signature)) {
+        [$algo, $signature] = explode('=', $headers->get(self::HEADER_SIGNATURE), 2) + [1 => ''];
+        if ('sha256' !== $algo || !hash_equals(hash_hmac('sha256', $data, $secret), $signature)) {
             throw new RejectWebhookException(406, 'Signature is wrong.');
         }
     }
