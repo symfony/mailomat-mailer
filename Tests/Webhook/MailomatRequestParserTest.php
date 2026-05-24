@@ -11,6 +11,7 @@
 
 namespace Symfony\Component\Mailer\Bridge\Mailomat\Tests\Webhook;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Mailer\Bridge\Mailomat\RemoteEvent\MailomatPayloadConverter;
 use Symfony\Component\Mailer\Bridge\Mailomat\Webhook\MailomatRequestParser;
@@ -77,5 +78,31 @@ class MailomatRequestParserTest extends AbstractRequestParserTestCase
             'HTTP_X-MOM-Webhook-Signature' => $signature,
             'HTTP_X-MOM-Webhook-Timestamp' => $timestamp,
         ], $body);
+    }
+
+    #[DataProvider('provideNonSha256Algorithms')]
+    public function testRejectsNonSha256Algorithm(string $algo)
+    {
+        $secret = $this->getSecret();
+        $data = '1d958822-0934-4c6a-abc8-5defec4baa64.delivered.1718004211';
+        $payload = file_get_contents(__DIR__.'/Fixtures/delivered.json');
+
+        $request = Request::create('/', 'POST', [], [], [], [
+            'Content-Type' => 'application/json',
+            'HTTP_X-MOM-Webhook-Event' => 'delivered',
+            'HTTP_X-MOM-Webhook-ID' => '1d958822-0934-4c6a-abc8-5defec4baa64',
+            'HTTP_X-MOM-Webhook-Signature' => $algo.'='.hash_hmac($algo, $data, $secret),
+            'HTTP_X-MOM-Webhook-Timestamp' => '1718004211',
+        ], str_replace("\n", "\r\n", $payload));
+
+        $this->expectException(RejectWebhookException::class);
+        $this->createRequestParser()->parse($request, $secret);
+    }
+
+    public static function provideNonSha256Algorithms(): iterable
+    {
+        yield 'md5' => ['md5'];
+        yield 'sha1' => ['sha1'];
+        yield 'sha512' => ['sha512'];
     }
 }

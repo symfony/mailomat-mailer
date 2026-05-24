@@ -100,7 +100,7 @@ final class MailomatRequestParser extends AbstractRequestParser
             $timestamp,
         ]);
 
-        if (!hash_equals(hash_hmac($algo, $data, $secret), $signature)) {
+        if ('sha256' !== $algo || !hash_equals(hash_hmac('sha256', $data, $secret), $signature)) {
             throw new RejectWebhookException(406, 'Signature is wrong.');
         }
     }
